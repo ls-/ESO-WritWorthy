@@ -205,6 +205,8 @@ function WritWorthy.TooltipInsertOurText(control, item_link, purchase_gold, uniq
     -- Only fire for master writs.
     if ITEMTYPE_MASTER_WRIT ~= GetItemLinkItemType(item_link) then return end
 
+    ZO_Tooltip_AddDivider(control)
+
     local mat_list, know_list, parser   = WritWorthy.ToMatKnowList(item_link)
     local voucher_ct = WritWorthy.ToVoucherCount(item_link)
     local mat_text = WritWorthy.MatTooltipText(mat_list, purchase_gold, voucher_ct)
