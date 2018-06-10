@@ -99,12 +99,18 @@ end
 
 function Util.MatPrice(link)
                         -- Master Merchant first
-    local mm = Util.MMPrice(link)
-    if mm then
-        return mm
+    local price = Util.MMPrice(link)
+    if price then
+        return price
     end
 
-                        -- If fallback enabled, use that
+    -- Tamriel Trade Centre second
+    price = Util.TTCPrice(link)
+    if price then
+        return price
+    end
+
+    -- If fallback enabled, use that
     if WritWorthy.savedVariables.enable_mm_fallback then
         local fb = WritWorthy.FallbackPrice(link)
         if fb then
@@ -116,13 +122,13 @@ function Util.MatPrice(link)
     return WritWorthy.GOLD_UNKNOWN
 end
 
-local MM_CACHE_DUR_SECONDS = 5 * 60
+local CACHE_DUR_SECONDS = 5 * 60
 
 function Util.ResetCachedMMIfNecessary()
     local prev_reset_ts = WritWorthy.mm_cache_reset_ts or GetTimeStamp()
     local now_ts   = GetTimeStamp()
     local ago_secs = GetDiffBetweenTimeStamps(now_ts, prev_reset_ts)
-    if MM_CACHE_DUR_SECONDS < ago_secs then
+    if CACHE_DUR_SECONDS < ago_secs then
         WritWorthy.mm_cache = {}
         WritWorthy.mm_cache_reset_ts = now_ts
     end
@@ -176,4 +182,59 @@ function Util.MMPrice(link)
     if not mm then return WritWorthy.GOLD_UNKNOWN end
     Util.SetCachedMMPrice(link, mm.avgPrice)
     return mm.avgPrice
+end
+
+-- Tamriel Trade Centre integration
+function Util.ResetCachedTTCIfNecessary()
+    if not WritWorthy.ttc_cache then return end
+
+    local old_ts = WritWorthy.ttc_cache_reset_ts or GetTimeStamp()
+    local new_ts = GetTimeStamp()
+    if GetDiffBetweenTimeStamps(new_ts, old_ts) > CACHE_DUR_SECONDS then
+        -- less garbage
+        ZO_ClearTable(WritWorthy.ttc_cache)
+        WritWorthy.ttc_cache_reset_ts = new_ts
+    end
+end
+
+function Util.GetCachedTTCPrice(link)
+    Util.ResetCachedMMIfNecessary()
+    if not WritWorthy.ttc_cache then
+        WritWorthy.ttc_cache = {}
+    end
+
+    return WritWorthy.ttc_cache[link]
+end
+
+function Util.SetCachedTTCPrice(link, ttcAvgPrice)
+    if not WritWorthy.ttc_cache then
+        WritWorthy.ttc_cache = {}
+    end
+
+    WritWorthy.ttc_cache[link] = ttcAvgPrice
+end
+
+function Util.TTCPrice(link)
+    if not TamrielTradeCentre then
+        return WritWorthy.GOLD_UNKNOWN
+    end
+
+    if not link then
+        return WritWorthy.GOLD_UNKNOWN
+    end
+
+    local cachedPriceInfo = Util.GetCachedTTCPrice(link)
+    if cachedPriceInfo then
+        return cachedPriceInfo
+    end
+
+    local priceInfo = TamrielTradeCentrePrice:GetPriceInfo(link)
+    if not priceInfo then
+        return WritWorthy.GOLD_UNKNOWN
+    end
+
+    if priceInfo.Avg and priceInfo.Avg > 0 then
+        Util.SetCachedTTCPrice(link, priceInfo.Avg)
+        return priceInfo.Avg
+    end
 end
