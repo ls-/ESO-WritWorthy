@@ -201,6 +201,12 @@ end
 --                Include this cost in the gold-per-voucher calculation.
 --                (optional, nil ok)
 --
+
+local HAS_COLOR = ZO_ColorDef:New(GetInterfaceColor(INTERFACE_COLOR_TYPE_GAMEPAD_TOOLTIP, GAMEPAD_TOOLTIP_COLOR_ACTIVE))
+local DOESNT_HAVE_COLOR = ZO_ColorDef:New(GetInterfaceColor(INTERFACE_COLOR_TYPE_GAMEPAD_TOOLTIP, GAMEPAD_TOOLTIP_COLOR_INACTIVE))
+local SI_PROVISIONER_INGREDIENTS_HEADER = GetString(SI_PROVISIONER_INGREDIENTS_HEADER)
+local SI_RECIPE_INGREDIENT_WITH_COUNT = GetString(SI_RECIPE_INGREDIENT_WITH_COUNT)
+
 function WritWorthy.TooltipInsertOurText(control, item_link, purchase_gold, unique_id)
     -- Only fire for master writs.
     if ITEMTYPE_MASTER_WRIT ~= GetItemLinkItemType(item_link) then return end
@@ -211,6 +217,18 @@ function WritWorthy.TooltipInsertOurText(control, item_link, purchase_gold, uniq
     local voucher_ct = WritWorthy.ToVoucherCount(item_link)
     local mat_text = WritWorthy.MatTooltipText(mat_list, purchase_gold, voucher_ct)
     if not mat_text then return end
+
+    -- Ingredients
+    control:AddLine(SI_PROVISIONER_INGREDIENTS_HEADER, "ZoFontHeader", 1, 1, 1, nil, MODIFY_TEXT_TYPE_UPPERCASE)
+
+    local ingredients = {}
+    for _, mat in next, mat_list do
+        local bag, bank, craftBag = GetItemLinkStacks(mat.link)
+        table.insert(ingredients, (bag + bank + craftBag >= mat.ct and HAS_COLOR or DOESNT_HAVE_COLOR):Colorize(zo_strformat(SI_RECIPE_INGREDIENT_WITH_COUNT, mat.name, mat.ct)))
+    end
+
+    control:AddLine(table.concat(ingredients, ", "), "", 1, 1, 1, nil, nil, TEXT_ALIGN_LEFT)
+
     if WritWorthy.savedVariables.enable_mat_price_tooltip ~= false then
         control:AddLine(mat_text)
     end
